@@ -89,30 +89,27 @@ def sign(M, d):
     return (r, s)
 
 def verify(M, S1, S2, e2):
-    r = S1
-    s = S2
-
     # r, s가 q사이의 값인지 체크
-    if (r <= 0) or (r >= q) or (s <= 0) or (s >= q):
+    if (S1 <= 0) or (S1 >= q) or (S2 <= 0) or (S2 >= q):
         return False
 
     h = int.from_bytes(hashlib.sha256(M.encode()).digest(), byteorder="big")
 
     # s의 역원 구하기
-    w = Extended_Euclidian(q, s)
-    u1 = (h * w) % q
-    u2 = (r * w) % q
+    w = Extended_Euclidian(q, S2) % q
+    A = (h * w) 
+    B = (S1 * w)
 
-    P = addition(double_and_add(e1, u1), double_and_add(e2, u2))
+    P = addition(double_and_add(e1, A), double_and_add(e2, B))
 
     if P == (0, 0):
         return False
     
     # ECDSA 공개키 출력
-    print("\tA = ", hex(P[0]))
-    print("\tB = ", hex(P[1]))
+    print("\tA = ", hex(A))
+    print("\tB = ", hex(B))
 
-    return r == (P[0] % q)
+    return S1 == (P[0] % q)
 
 if __name__ == "__main__":
  d = generate_private_key() # 개인 키
