@@ -1,41 +1,39 @@
-import hashlib
 import time
+import struct
+import hashlib
 
-class BitcoinPOW:
-    def __init__(self, message, target_bits):
-        self.message = message
-        self.target_bits = target_bits
+def pow(msg, bits):
+    bits = bytes.fromhex(bits)
+    target = int.from_bytes(bits[1:], byteorder='big') << 8 * (bits[0] - 3)
 
-    def _hash(self, extra_nonce, nonce):
-        data = self.message.encode() + extra_nonce.to_bytes(4, byteorder='big') + nonce.to_bytes(4, byteorder='big')
-        return hashlib.sha256(hashlib.sha256(data).digest()).digest()
+    start = time.time()
 
-    def find_nonce(self):
-        target = int(self.target_bits, 16)
-        extra_nonce = int(time.time())
-        nonce = 0
-        start_time = time.time()
+    ext_nonce = int(time.time())
+    nonce = 0
 
-        while True:
-            hash_value = int.from_bytes(self._hash(extra_nonce, nonce), byteorder='big')
+    data = msg.encode('utf-8') + struct.pack('<I', ext_nonce) + struct.pack('<I', nonce)
+    data_hash = hashlib.sha256(hashlib.sha256(data).digest()).digest()
 
-            if hash_value < target:
-                print(f"Target: 0x{self.target_bits:064x}")
-                print(f"메시지: {self.message}, Extra nonce: {extra_nonce}, nonce: {nonce}")
-                print(f"실행 시간: {time.time() - start_time:.9f}초")
-                print(f"Hash result: {hash_value:064x}")
-                return nonce
+    while int.from_bytes(data_hash, byteorder='big') > target:
+        nonce += 1
 
-            nonce += 1
+        if nonce >= 2**32:
+            ext_nonce += 1
+            nonce = 0
 
-            if nonce == 2**32:
-                nonce = 0
-                extra_nonce += 1
+        data = msg.encode('utf-8') + struct.pack('<I', ext_nonce) + struct.pack('<I', nonce)
+        data_hash = hashlib.sha256(hashlib.sha256(data).digest()).digest()
+
+    end = time.time()
+    execution_time = end-start
+
+    print(f"Target: 0x{format(target, 'x').zfill(64)}")
+    print(f'메시지: {msg}, Extra nonce: {ext_nonce}, nonce: {nonce}')
+    print(f'실행 시간: {execution_time}초')
+    print(f'Hash result: 0x{data_hash.hex()}')
 
 if __name__ == '__main__':
-    # 학번=123456
-    message = input('메시지의 내용? ')
-    # 1e00ffff
-    target_bits = input('Target bits? ')
-    pow_solver = BitcoinPOW(message, target_bits)
-    pow_solver.find_nonce()
+    msg = input('메시지의 내용? ')
+    bits = input('Target bits? ')
+
+    pow(msg, bits)
